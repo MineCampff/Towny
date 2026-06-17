@@ -911,7 +911,7 @@ public class TownyPlaceholderExpansion extends PlaceholderExpansion implements R
 		String currencySymbol = getCurrencySymbol();
 
 		if (balance < 1000) {
-			return dFormat.format(balance) + "$" + currencySymbol;
+			return dFormat.format(balance) + "$";
 		}
 
 		double value = balance / 1000;
