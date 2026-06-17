@@ -760,13 +760,23 @@ public class TownyPlaceholderExpansion extends PlaceholderExpansion implements R
 			return "";
 		}
 
+		// Return only the town name for town_name placeholder
+		if (identifier.equals("town_name")) {
+			return StringMgmt.remUnderscore(town.getName());
+		}
+
 		String value = switch(identifier) {
-		case "town_balance" -> getMoney(town.getAccount().getCachedBalance()); // %townyadvanced_top_town_balance_n%
-		case "town_residents" -> String.valueOf(town.getNumResidents());       // %townyadvanced_top_town_residents_n%
-		case "town_residents_and_open" -> String.valueOf(town.getNumResidents());       // %townyadvanced_top_town_residents_and_open_n%
-		case "town_land" -> String.valueOf(town.getNumTownBlocks());           // %townyadvanced_top_town_land_n%
+		case "town_balance" -> getShortenedBalance(town.getAccount().getCachedBalance()); // %townyadvanced_top_town_balance_n%
+		case "town_residents" -> String.valueOf(town.getNumResidents());                  // %townyadvanced_top_town_residents_n%
+		case "town_residents_and_open" -> String.valueOf(town.getNumResidents());          // %townyadvanced_top_town_residents_and_open_n%
+		case "town_land" -> String.valueOf(town.getNumTownBlocks());                       // %townyadvanced_top_town_land_n%
 		default -> "";
 		};
+
+		// For town_balance, return only the shortened value (e.g., "10.12k$") without the full leaderboard format
+		if (identifier.equals("town_balance")) {
+			return value;
+		}
 
 		return String.format(TownySettings.getPAPILeaderboardFormat(), StringMgmt.remUnderscore(town.getName()), value);
 	}
@@ -774,10 +784,10 @@ public class TownyPlaceholderExpansion extends PlaceholderExpansion implements R
 	@Nullable
 	private Town getTownForLeaderBoardPlaceholder(String identifier, int num) {
 		ComparatorType type = switch (identifier) {
-		case "town_balance" -> ComparatorType.BALANCE;     // %townyadvanced_top_town_balance_n%
-		case "town_residents" -> ComparatorType.RESIDENTS; // %townyadvanced_top_town_residents_n%
-		case "town_residents_and_open" -> ComparatorType.OPEN; // %townyadvanced_top_town_residents_and_open_n%
-		case "town_land" -> ComparatorType.TOWNBLOCKS;     // %townyadvanced_top_town_land_n%
+		case "town_balance", "town_name" -> ComparatorType.BALANCE; // %townyadvanced_top_town_balance_n%, %townyadvanced_top_town_name_n%
+		case "town_residents" -> ComparatorType.RESIDENTS;          // %townyadvanced_top_town_residents_n%
+		case "town_residents_and_open" -> ComparatorType.OPEN;      // %townyadvanced_top_town_residents_and_open_n%
+		case "town_land" -> ComparatorType.TOWNBLOCKS;              // %townyadvanced_top_town_land_n%
 		default -> null;
 		};
 		if (type == null) {
@@ -888,5 +898,39 @@ public class TownyPlaceholderExpansion extends PlaceholderExpansion implements R
 
 	private String getMoney(double cost) {
 		return TownyEconomyHandler.getFormattedBalance(cost);
+	}
+
+	/**
+	 * Returns a shortened version of the balance with suffix (k, M, B, T, Qa, Qi).
+	 * For example: 523234 -> 523.23k$
+	 *
+	 * @param balance The balance to shorten
+	 * @return Shortened balance string with currency suffix
+	 */
+	private String getShortenedBalance(double balance) {
+		String currencySymbol = getCurrencySymbol();
+
+		if (balance < 1000) {
+			return TownyEconomyHandler.getFormattedBalance(balance);
+		}
+
+		double value = balance / 1000;
+
+		return dFormat.format(value) + "k" + currencySymbol;
+	}
+
+	/**
+	 * Gets the currency symbol from the economy handler.
+	 *
+	 * @return The currency symbol (e.g., "$")
+	 */
+	private String getCurrencySymbol() {
+		if (TownyEconomyHandler.isActive() && TownyEconomyHandler.activeAdapter() != null) {
+			// Get formatted balance of 0 to extract the currency symbol
+			String formatted = TownyEconomyHandler.getFormattedBalance(0);
+			// Remove the numeric part to get just the currency symbol
+			return formatted.replaceAll("[0-9.,\\s]", "");
+		}
+		return "$";
 	}
 }
